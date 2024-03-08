@@ -1,0 +1,326 @@
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CONSTRUYE TU HORARIO UPAO</title>
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .editable {
+      cursor: pointer;
+    }
+    .center {
+      text-align: center;
+    }
+    .presencial {
+      background-color: #004593; /* Azul */
+      color: white;
+      text-align: center;
+      font-weight: bold;
+    }
+    .no-presencial {
+      background-color: #ec6407; /* Naranja */
+      color: white;
+      text-align: center;
+      font-weight: bold;
+    }
+    .btn-group {
+      margin-top: 20px; 
+    }
+    .curso-cell {
+      width: 60px; 
+      height: 60px; 
+      padding: 5px; 
+      overflow: hidden; 
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="container mt-5">
+    <h1 class="text-center" style="margin-bottom: 1em;">CONSTRUYE TU HORARIO</h1>
+    <div class="row mb-3">
+      <div class="col-md-3">
+        <label for="nombreCurso">Nombre del Curso:</label>
+        <input type="text" class="form-control" id="nombreCurso">
+      </div>
+      <div class="col-md-2">
+        <label for="dia">Día:</label>
+        <select class="form-control" id="dia">
+          <option value="lunes">Lunes</option>
+          <option value="martes">Martes</option>
+          <option value="miércoles">Miércoles</option>
+          <option value="jueves">Jueves</option>
+          <option value="viernes">Viernes</option>
+          <option value="sábado">Sábado</option>
+          <option value="domingo">Domingo</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label for="horaInicio">Hora de Inicio:</label>
+        <input type="text" class="form-control" id="horaInicio" placeholder="HH:MM">
+      </div>
+      <div class="col-md-2">
+        <label for="horaFin">Hora de Fin:</label>
+        <input type="text" class="form-control" id="horaFin" placeholder="HH:MM">
+      </div>
+    </div>
+    <div class="row mb-3">
+      <div class="col-md-12 center">
+        <label for="modalidad">Modalidad:</label>
+        <select class="form-control" id="modalidad">
+          <option value="presencial">Presencial</option>
+          <option value="no-presencial">No Presencial</option>
+        </select>
+      </div>
+    </div>
+
+
+    <div class="row mb-3">
+      <div class="col-md-12">
+        <p>Leyenda:</p>
+        <div class="d-flex align-items-center">
+          <div class="rounded-circle mr-2" style="width: 20px; height: 20px; background-color: #004593;"></div>
+          <p class="mb-0">Presencial</p>
+        </div>
+        <div class="d-flex align-items-center">
+          <div class="rounded-circle mr-2" style="width: 20px; height: 20px; background-color: #ec6407;"></div>
+          <p class="mb-0">No Presencial</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="row mb-3 center">
+      <div class="col-md-12 btn-group">
+        <button type="button" class="btn btn-primary" id="insertarBtn">Insertar</button>
+        <button type="button" class="btn btn-danger" id="eliminarCursoBtn">Eliminar</button>
+      </div>
+    </div>
+
+    <div class="table-responsive" style="margin-top: 4em;">
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>Hora</th>
+            <th>Lunes</th>
+            <th>Martes</th>
+            <th>Miércoles</th>
+            <th>Jueves</th>
+            <th>Viernes</th>
+            <th>Sábado</th>
+            <th>Domingo</th>
+          </tr>
+        </thead>
+        <tbody id="calendarioBody">
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+  <script>
+    $(document).ready(function() {
+      var horarios = [];
+
+      function compareHours(time1, time2) {
+        var hour1 = parseInt(time1.split(':')[0]);
+        var minute1 = parseInt(time1.split(':')[1]);
+        var hour2 = parseInt(time2.split(':')[0]);
+        var minute2 = parseInt(time2.split(':')[1]);
+
+        if (hour1 !== hour2) {
+          return hour1 - hour2;
+        } else {
+          if (minute1 === 0 && minute2 === 0) {
+            return 0;
+          } else {
+            return minute1 - minute2;
+          }
+        }
+      }
+
+      // Función para aplicar estilos de color según la modalidad
+      function aplicarEstilosColor(nombreCurso, horaInicio, horaFin, dia, modalidad) {
+        // Buscar todas las celdas del día especificado en todas las filas
+        var dayCells = $('td[data-day="' + dia + '"]');
+        dayCells.each(function(index, cell) {
+          var cellText = $(cell).text();
+          // Verificar si el curso en la celda actual coincide con el nombre del curso a insertar
+          if (cellText === nombreCurso) {
+            // Aplicar el estilo correspondiente según la modalidad
+            $(cell).removeClass('presencial no-presencial').addClass(modalidad);
+          }
+        });
+      }
+
+      // Función para insertar una fila en el calendario
+      function insertarFila(nombreCurso, horaInicio, horaFin, dia, modalidad) {
+        var nuevaFilaHtml = '<tr class="editable">' +
+          '<td>' + horaInicio + ' - ' + horaFin + '</td>' +
+          '<td data-day="lunes"></td>' +
+          '<td data-day="martes"></td>' +
+          '<td data-day="miércoles"></td>' +
+          '<td data-day="jueves"></td>' +
+          '<td data-day="viernes"></td>' +
+          '<td data-day="sábado"></td>' +
+          '<td data-day="domingo"></td>' +
+          '</tr>';
+
+        var rows = $('#calendarioBody tr.editable');
+        var insertIndex = rows.length;
+        var newRow = $(nuevaFilaHtml);
+
+        // Verificar si ya existe una fila con el mismo día y el mismo rango de horas
+        var existingRow = rows.filter(function () {
+          var existingHora = $(this).find('td:first').text();
+          return $(this).find('td[data-day="' + dia + '"]').text() !== '' && existingHora === horaInicio + ' - ' + horaFin;
+        });
+
+        if (existingRow.length > 0) {
+          // Si ya existe una fila con el mismo día y el mismo rango de horas, verificar si el nombre del curso es diferente
+          var existingNombreCurso = existingRow.find('td[data-day="' + dia + '"]').text();
+          if (existingNombreCurso === nombreCurso) {
+            // Si el nombre del curso es el mismo, mostrar un mensaje de error
+            alert('¡Error! Ya existe un curso con el mismo nombre, día y horario.');
+            return;
+          } else {
+            // Si el nombre del curso es diferente, agregar el nuevo nombre del curso a la misma fila
+            existingRow.find('td[data-day="' + dia + '"]').text(existingNombreCurso + ', ' + nombreCurso);
+            return;
+          }
+        }
+
+        // Validar que no haya choque de horarios en cualquier día de la semana
+        var choque = false;
+        rows.each(function(index, row) {
+          var rowHora = $(row).find('td:first').text();
+          // Verificar si hay choque en el mismo día
+          if ($(row).find('td[data-day="' + dia + '"]').text() !== '') {
+            if (compareHours(horaInicio, rowHora.split(' - ')[1]) <= 0 && compareHours(horaFin, rowHora.split(' - ')[0]) >= 0) {
+              choque = true;
+              return false;
+            }
+          }
+          // Verificar si hay choque en otro día
+          for (var i = 1; i < 8; i++) {
+            var currentDay = $('#calendarioBody th:nth-child(' + i + ')').text().toLowerCase();
+            if (currentDay !== dia && $(row).find('td[data-day="' + currentDay + '"]').text() !== '') {
+              if (compareHours(horaInicio, rowHora.split(' - ')[1]) <= 0 && compareHours(horaFin, rowHora.split(' - ')[0]) >= 0) {
+                choque = true;
+                return false;
+              }
+            }
+          }
+        });
+
+        if (choque) {
+          alert('¡Error! El curso choca con un horario existente de otro curso en algún día.');
+          return;
+        }
+
+        // Aplicar el estilo correspondiente según la modalidad para la celda del día actual
+        var dayCell = newRow.find('td[data-day="' + dia + '"]');
+        dayCell.removeClass('presencial no-presencial').addClass(modalidad);
+
+        // Buscar una fila existente con el mismo rango de horas
+        var existingRowSameHours = rows.filter(function () {
+          return $(this).find('td:first').text() === horaInicio + ' - ' + horaFin;
+        });
+
+        if (existingRowSameHours.length > 0) {
+          // Si hay una fila existente con el mismo rango de horas, buscar el día correspondiente
+          var existingDayCell = existingRowSameHours.find('td[data-day="' + dia + '"]');
+          if (existingDayCell.text() !== '') {
+            // Si la celda del día correspondiente ya tiene contenido, mostrar un mensaje de error
+            alert('¡Error! Ya existe un curso con el mismo horario en este día.');
+            return;
+          } else {
+            // Si la celda del día correspondiente está vacía, agregar el nuevo curso
+            existingDayCell.text(nombreCurso);
+            aplicarEstilosColor(nombreCurso, horaInicio, horaFin, dia, modalidad);
+            return;
+          }
+        }
+
+    // Función para obtener el índice de inserción según el orden de los horarios
+    function getIndexToInsert() {
+      for (var i = 0; i < rows.length; i++) {
+          var existingHora = $(rows[i]).find('td:first').text();
+          if (compareHours(horaInicio, existingHora.split(' - ')[0]) < 0) {
+              return i;
+          }
+      }
+      return rows.length;
+  }
+
+  // Obtener el índice de inserción según el orden de los horarios
+  var insertIndex = getIndexToInsert();
+
+  // Insertar la fila en la posición adecuada
+  if (insertIndex === rows.length) {
+      $('#calendarioBody').append(newRow);
+  } else {
+      $(rows[insertIndex]).before(newRow);
+  }
+
+function fusionarCeldas() {
+  var rows = $('#calendarioBody tr');
+  rows.each(function(index, row) {
+    var cells = $(row).find('td');
+    cells.each(function(cellIndex, cell) {
+      var currentCell = $(cell);
+      var nextCell = $(cells[cellIndex + 1]);
+      var currentCurso = currentCell.text();
+      var nextCurso = nextCell.text();
+      if (currentCurso === nextCurso && currentCurso !== '') {
+        var rowspan = currentCell.attr('rowspan') || 1;
+        currentCell.attr('rowspan', parseInt(rowspan) + 1);
+        nextCell.remove();
+      }
+    });
+  });
+}
+
+function insertarFila(nombreCurso, horaInicio, horaFin, dia, modalidad) {
+
+
+
+  if (insertIndex === rows.length) {
+    $('#calendarioBody').append(newRow);
+  } else {
+    $(rows[insertIndex]).before(newRow);
+  }
+
+  // Fusionar celdas después de insertar la nueva fila
+  fusionarCeldas();
+}
+
+        // Insertar los datos del curso en la fila correspondiente al día y hora especificados
+        var dayCell = newRow.find('td[data-day="' + dia + '"]');
+        dayCell.text(nombreCurso);
+        aplicarEstilosColor(nombreCurso, horaInicio, horaFin, dia, modalidad);
+      }
+
+      // Botón Insertar
+      $('#insertarBtn').click(function() {
+        var nombreCurso = $('#nombreCurso').val();
+        var horaInicio = $('#horaInicio').val();
+        var horaFin = $('#horaFin').val();
+        var dia = $('#dia').val();
+        var modalidad = $('#modalidad').val();
+
+        // Insertar la fila en el calendario
+        insertarFila(nombreCurso, horaInicio, horaFin, dia, modalidad);
+      });
+
+      // Botón Eliminar Curso
+      $('#eliminarCursoBtn').click(function() {
+        $('#calendarioBody tr:last').remove();
+      });
+    });
+  </script>
+</body>
+</html>
+
